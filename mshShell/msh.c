@@ -51,8 +51,13 @@ int main()
 {
 
   char *command_string = (char *)malloc(MAX_COMMAND_SIZE);
+  
   char *history[MAX_NUM_HISTORY_ARGS];
   int hist_counter = 0;
+  for(int j = 0 ; j< MAX_NUM_HISTORY_ARGS; j++)
+  {
+    history[j] = (char *)malloc(MAX_COMMAND_SIZE);
+  }
 
   while (1)
   {
@@ -97,10 +102,12 @@ int main()
     // This variable keep tracks of the child processes and the parent processes.
     int pid_status;
 
-    strcpy(history[hist_counter], command_string);
-
     if (token[0] != NULL)
     {
+
+      char *usr_input_for_hist = strdup(command_string);
+      strcpy(history[hist_counter], usr_input_for_hist);
+
       if (strcmp(token[0], "exit") == 0 || strcmp(token[0], "quit") == 0)
       {
         exit(0);
@@ -120,7 +127,7 @@ int main()
         }
         else
         {
-          printf("No commands in history.");
+          printf("No commands in history.\n");
         }
       }
       else if (strcmp(token[0],"!") == 0)
@@ -128,14 +135,14 @@ int main()
         char *input = strtok(command_string, "!");
         int input_num = atoi(input);
 
-        if(history != NULL)
-        {
-          
-        }
-        else
-        {
-          printf("No commands in history.");
-        }
+        // if(history != NULL)
+        // {
+
+        // }
+        // else
+        // {
+        //   printf("No commands in history.");
+        // }
       }
       else
       {
