@@ -44,12 +44,15 @@
 
 #define MAX_COMMAND_SIZE 255 // The maximum command-line size
 
-#define MAX_NUM_ARGUMENTS 5 // Mav shell only supports four arguments
+#define MAX_NUM_ARGUMENTS 11 // Mav shell only supports ten arguments
+#define MAX_NUM_HISTORY_ARGS 15 // Mav shell only supports 15 history arguments
 
 int main()
 {
 
   char *command_string = (char *)malloc(MAX_COMMAND_SIZE);
+  char *history[MAX_NUM_HISTORY_ARGS];
+  int hist_counter = 0;
 
   while (1)
   {
@@ -61,12 +64,10 @@ int main()
     // This while command will wait here until the user
     // inputs something since fgets returns NULL when there
     // is no input
-    while (!fgets(command_string, MAX_COMMAND_SIZE, stdin))
-      ;
+    while (!fgets(command_string, MAX_COMMAND_SIZE, stdin));
 
     /* Parse input */
     char *token[MAX_NUM_ARGUMENTS];
-
     int token_count = 0;
 
     // Pointer to point to the token
@@ -96,6 +97,8 @@ int main()
     // This variable keep tracks of the child processes and the parent processes.
     int pid_status;
 
+    strcpy(history[hist_counter], command_string);
+
     if (token[0] != NULL)
     {
       if (strcmp(token[0], "exit") == 0 || strcmp(token[0], "quit") == 0)
@@ -106,24 +109,52 @@ int main()
       {
         chdir(token[1]);
       }
+      else if (strcmp(token[0], "history") == 0)
+      {
+        if(hist_counter > 0)
+        {
+          for(int i = 0; i < hist_counter; i++)
+          {
+            printf("[%d]: %s", i+1, history[i]);
+          }
+        }
+        else
+        {
+          printf("No commands in history.");
+        }
+      }
+      else if (strcmp(token[0],"!") == 0)
+      {
+        char *input = strtok(command_string, "!");
+        int input_num = atoi(input);
+
+        if(history != NULL)
+        {
+          
+        }
+        else
+        {
+          printf("No commands in history.");
+        }
+      }
       else
       {
         pid_t pid = fork();
-        if(pid == 0)
+        if (pid == 0)
         {
-          if(execvp(token[0], token) == -1)
+          if (execvp(token[0], token) == -1)
           {
             printf("%s: Command not found.\n", token[0]);
           }
         }
         else
         {
-          waitpid(pid, &pid_status, 0);
+          int status;
+          wait(&status);
         }
       }
-
     }
-
+    hist_counter++;
     free(head_ptr);
   }
   return 0;
