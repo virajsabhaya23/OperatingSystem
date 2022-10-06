@@ -44,17 +44,23 @@
 
 #define MAX_COMMAND_SIZE 255 // The maximum command-line size
 
-#define MAX_NUM_ARGUMENTS 11 // Mav shell only supports ten arguments
-#define MAX_NUM_HISTORY_ARGS 15 // Mav shell only supports 15 history arguments
+#define MAX_NUM_ARGUMENTS 11    // Mav shell only supports ten arguments
+#define MAX_NUM_HISTORY_ARGS 16 // Mav shell only supports 15 history arguments
+
+// int listOfPids[10];
+// void listpidsList(pid_t pid)
+// {
+//     listOfPids[] += pid;
+// }
 
 int main()
 {
 
   char *command_string = (char *)malloc(MAX_COMMAND_SIZE);
-  
+
   char *history[MAX_NUM_HISTORY_ARGS];
   int hist_counter = 0;
-  for(int j = 0 ; j< MAX_NUM_HISTORY_ARGS; j++)
+  for (int j = 0; j < MAX_NUM_HISTORY_ARGS; j++)
   {
     history[j] = (char *)malloc(MAX_COMMAND_SIZE);
   }
@@ -69,7 +75,8 @@ int main()
     // This while command will wait here until the user
     // inputs something since fgets returns NULL when there
     // is no input
-    while (!fgets(command_string, MAX_COMMAND_SIZE, stdin));
+    while (!fgets(command_string, MAX_COMMAND_SIZE, stdin))
+      ;
 
     /* Parse input */
     char *token[MAX_NUM_ARGUMENTS];
@@ -118,11 +125,11 @@ int main()
       }
       else if (strcmp(token[0], "history") == 0)
       {
-        if(hist_counter > 0)
+        if (hist_counter > 0)
         {
-          for(int i = 0; i < hist_counter; i++)
+          for (int i = 0; i < hist_counter; i++)
           {
-            printf("[%d]: %s", i+1, history[i]);
+            printf("[%d]: %s", i + 1, history[i]);
           }
         }
         else
@@ -130,7 +137,7 @@ int main()
           printf("No commands in history.\n");
         }
       }
-      else if (strcmp(token[0],"!") == 0)
+      else if (strcmp(token[0], "!") == 0)
       {
         char *input = strtok(command_string, "!");
         int input_num = atoi(input);
@@ -144,14 +151,24 @@ int main()
         //   printf("No commands in history.");
         // }
       }
+      else if (strcmp(token[0], "listpids") == 0)
+      {
+        // listpidsList(pids_list);
+      }
       else
       {
         pid_t pid = fork();
+        //save the pid in an array
+        
+        // pid_t pids_list = getpid();
+        // listpidsList(pids_list);
+
         if (pid == 0)
         {
           if (execvp(token[0], token) == -1)
           {
             printf("%s: Command not found.\n", token[0]);
+            exit(0);
           }
         }
         else
@@ -162,6 +179,8 @@ int main()
       }
     }
     hist_counter++;
+    if (hist_counter > 14)
+      hist_counter = 0;
     free(head_ptr);
   }
   return 0;
