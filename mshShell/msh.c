@@ -46,12 +46,20 @@
 
 #define MAX_NUM_ARGUMENTS 11    // Mav shell only supports ten arguments
 #define MAX_NUM_HISTORY_ARGS 16 // Mav shell only supports 15 history arguments
+#define MAX_NUM_PIDS_ARGS 21 // Mav shell only supports 20 LISTPIDS arguments
 
-// int listOfPids[10];
-// void listpidsList(pid_t pid)
-// {
-//     listOfPids[] += pid;
-// }
+int listOfPids[20]; // List of PIDs array
+
+/*
+This function is used to print the list of the pids
+*/
+void showListpids(int listPidCounter, pid_t pid)
+{
+  for(int i = 0; i < listPidCounter; i++)
+  {
+    printf("[%d]. %d\n", listPidCounter+1, pid);
+  }
+}
 
 int main()
 {
@@ -63,6 +71,13 @@ int main()
   for (int j = 0; j < MAX_NUM_HISTORY_ARGS; j++)
   {
     history[j] = (char *)malloc(MAX_COMMAND_SIZE);
+  }
+
+  int *listPids[MAX_NUM_PIDS_ARGS];
+  int listPidCoutner = 0;
+  for(int i = 0; i < MAX_NUM_PIDS_ARGS; i++)
+  {
+    listPids[i] = (int *)malloc(MAX_COMMAND_SIZE);
   }
 
   while (1)
@@ -112,19 +127,24 @@ int main()
     if (token[0] != NULL)
     {
 
+      // this is a variable pointer to the history array and copies the 
+      // command string to the history array
       char *usr_input_for_hist = strdup(command_string);
       strcpy(history[hist_counter], usr_input_for_hist);
-
+      // compares if the user input is exit/quit, if it is then the shell exits
       if (strcmp(token[0], "exit") == 0 || strcmp(token[0], "quit") == 0)
       {
         exit(0);
       }
+      // if the user inpout is cd then it chdir to that location or path provided by the user
       else if (strcmp(token[0], "cd") == 0)
       {
         chdir(token[1]);
       }
+      // if history is inputed by the use then it prints the history of the last 15 cmds enetered
       else if (strcmp(token[0], "history") == 0)
       {
+        // if the history counter is less then 0 then no hisotry is prompted
         if (hist_counter > 0)
         {
           for (int i = 0; i < hist_counter; i++)
@@ -137,31 +157,37 @@ int main()
           printf("No commands in history.\n");
         }
       }
+      // if the user inputs "!" follwed by a  umber the strtok seperated the ! with the number 
+      // and runs n the cmd from history list
       else if (strcmp(token[0], "!") == 0)
       {
         char *input = strtok(command_string, "!");
         int input_num = atoi(input);
 
-        // if(history != NULL)
-        // {
-
-        // }
-        // else
-        // {
-        //   printf("No commands in history.");
-        // }
+        if(input_num > hist_counter)
+          printf("No such command in history.\n");
+        else
+          strcpy(command_string, history[input_num - 1]);
       }
+      // shows the list of the processes that are running
       else if (strcmp(token[0], "listpids") == 0)
       {
-        // listpidsList(pids_list);
+        // if the listpid counter 
+        if(listPidCoutner > 0)
+        {
+          pid_t pid = getpid();
+          listPidCoutner++;
+          listOfPids[listPidCoutner] = pid;
+          showListpids(listPidCoutner,pid);
+        }
+        else
+        {
+          printf("No processes in list yet.\n");
+        }
       }
       else
       {
         pid_t pid = fork();
-        //save the pid in an array
-        
-        // pid_t pids_list = getpid();
-        // listpidsList(pids_list);
 
         if (pid == 0)
         {
@@ -174,11 +200,15 @@ int main()
         else
         {
           int status;
-          wait(&status);
+          waitpid(pid, &status, 0);
         }
       }
     }
     hist_counter++;
+    // setting the listpidscounter and the history counter back to 0 if it reaches 20 and 15 respectively.
+    // This is to prevent the array from overflowing. and also to avoid the segmentation fault.
+    if (listPidCoutner > 20)
+      listPidCoutner = 0;
     if (hist_counter > 14)
       hist_counter = 0;
     free(head_ptr);
