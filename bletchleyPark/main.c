@@ -1,3 +1,7 @@
+/*
+  Name : Viraj Sabhaya
+  ID : 1001828871
+*/
 #include "include/crypto.h"
 #include "schedule.h"
 #include <pthread.h>
@@ -6,9 +10,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <signal.h>
+#include <semaphore.h>
 #include "clock.h"
 
-#define MAX_NUM_THREADS 1024 
+#define MAX_NUM_THREADS 1024
 #define MAX_FILENAME_LENGTH 255
 #define BUFFER_SIZE 148
 
@@ -19,27 +24,49 @@ static int running = 1 ;
 pthread_t message_receiver_tid ;
 pthread_t decryptor_tid[ MAX_NUM_THREADS ] ;
 
+pthread_mutex_t mutex ;
+sem_t msg_sema;
+sem_t count_sema;
+
 static void handleSIGUSR2( int sig )
 {
   printf("Time to shutdown\n");
   running = 0 ;
 }
 
+// fucntion that prints buffer
+void print_buffer()
+{
+  int i ;
+  for ( i = 0 ; i < count ; i++ )
+  {
+
+    printf("buffer (%d) = %s\n", i, message_buffer[i]);
+  }
+}
+
 int insertMessage( char * message )
 {
   assert( count < BUFFER_SIZE && "Tried to add a message to a full buffer");
-  strncpy( message_buffer[count] , message, MAX_FILENAME_LENGTH ); 
+  // added mutex lock to prevent race condition
+  pthread_mutex_lock( &mutex );
+  strncpy( message_buffer[count] , message, MAX_FILENAME_LENGTH );
   count++;
-  
+  pthread_mutex_unlock( &mutex );
   return 0;
 }
 
 int removeMessage( char *message )
 {
   assert( count && "Tried to remove a message from an empty buffer");
+  // added mutex lock to prevent race condition
+  pthread_mutex_lock( &mutex );
+  if(count > 0)
   strncpy( message, message_buffer[count-1], MAX_FILENAME_LENGTH ); 
+  sem_wait(&msg_sema);
   count--;
-
+  sem_post(&msg_sema);
+  pthread_mutex_unlock( &mutex );
   return 0;
 }
 
@@ -53,10 +80,18 @@ void * receiver_thread( void * args )
   while( running )
   {
     char * message_file = retrieveReceivedMessages( );
-
-    if( message_file )
+    // printf("message file print : %s", message_file); OUTPUTS NULL CUZ NO message is inputted
+    if(count < BUFFER_SIZE)
     {
-      insertMessage( message_file ) ;
+      if( message_file )
+      {
+        insertMessage( message_file ) ;
+        print_buffer();
+      }
+    }
+    else
+    {
+      printf("Buffer is full\n");
     }
   }
 }
@@ -73,7 +108,11 @@ void * decryptor_thread( void * args )
     memset( input_filename,  0, MAX_FILENAME_LENGTH ) ;
     memset( output_filename, 0, MAX_FILENAME_LENGTH ) ;
 
+    // removeMessage( message );
+    // load message with mutex lock
+    pthread_mutex_lock( &mutex );
     removeMessage( message );
+    pthread_mutex_unlock( &mutex );
 
     strncpy( input_filename, "ciphertext/", strlen( "ciphertext/" ) ) ;
     strcat ( input_filename, message );
@@ -83,7 +122,13 @@ void * decryptor_thread( void * args )
     output_filename[ strlen( output_filename ) - 8 ] = '\0';
     strcat ( output_filename, ".txt" );
 
+    // decryptFile( input_filename, output_filename );
+    // pthread_mutex_lock( &mutex );
+    // print input_filename and output_filename
+    if(message)
+    // printf("input_filename = %s output_filename = %s  message = %s  count = %d\n", input_filename, output_filename, message, count);
     decryptFile( input_filename, output_filename );
+    // pthread_mutex_unlock( &mutex );
 
     free( input_filename ) ;
     free( output_filename ) ;
@@ -93,6 +138,8 @@ void * decryptor_thread( void * args )
 
 int main( int argc, char * argv[] )
 {
+    sem_init( &msg_sema, 0, 1 );
+
     if( argc != 2 )
     {
       printf("Usage: ./a.out [number of threads]\n") ;
@@ -113,7 +160,7 @@ int main( int argc, char * argv[] )
     memset ( & act, '\0', sizeof( act ) ) ;
     act . sa_handler = & handleSIGUSR2 ;
 
-    if ( sigaction( SIGUSR2, &act, NULL ) < 0 )  
+    if ( sigaction( SIGUSR2, &act, NULL ) < 0 )
     {
       perror ( "sigaction: " ) ;
       return 0;
