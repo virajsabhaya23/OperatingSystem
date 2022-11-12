@@ -10,17 +10,14 @@ static int initialized = 0;
 
 static int lastUsed = -1;
 
-
 static enum ALGORITHM gAlgorithm;
 static void * gArena;
-
 
 enum TYPE
 {
   P = 0,
   H
 };
-
 
 struct Node
 {
@@ -30,10 +27,7 @@ struct Node
   int in_use;
 };
 
-
 static struct Node LinkedList[MAX_LINKED_LIST_SIZE];
-
-
 
 int findFreeNodeInternal()
 {
@@ -47,8 +41,6 @@ int findFreeNodeInternal()
 	}
 	return -1;
 }
-
-
 
 int insertNodeInternal(int previous, int value)
 {
@@ -151,11 +143,8 @@ int removeNode(int value)
 }
 
 
-
-
 int insertNode(int value , unsigned char * new_arena)
 {
-
 	int previous = -1;
   int ret = -1;
   int i;
@@ -177,7 +166,6 @@ int insertNode(int value , unsigned char * new_arena)
 	else if (previous >= MAX_LINKED_LIST_SIZE || previous < 0)
 	{
 		printf("Error: Tried to insert beyond the bounds of the allocated list.\n");
-
 	}
 	return ret;
 }
@@ -251,6 +239,7 @@ void mavalloc_destroy()
 void * mavalloc_alloc( size_t size )
 {
   void * ptr=NULL;
+
   if(gAlgorithm == FIRST_FIT)
   {
     //start at the beginning of the List
@@ -261,9 +250,10 @@ void * mavalloc_alloc( size_t size )
     {
       if(LinkedList[i].type == H && LinkedList[i].in_use && size < LinkedList[i].size)
       {
-        int leftover_size= LinkedList[i].size - size;
-        unsigned char * new_ptr = (unsigned char *)LinkedList[i].arena + (unsigned char *)size;
-        insertNode(leftover_size, new_ptr);
+        int leftover_size = LinkedList[i].size - size;
+        unsigned char * arena = (unsigned char *)LinkedList[i].arena + size;
+        // unsigned char * new_ptr = (unsigned char *)LinkedList[i].arena + (unsigned char *)size;
+        insertNode(leftover_size, arena);
         LinkedList[i].type=P;
         return LinkedList[i].arena;
       }
@@ -284,7 +274,24 @@ void * mavalloc_alloc( size_t size )
   }
   else if(gAlgorithm == NEXT_FIT)
   {
-
+    // the for loop will start at the last node that was allocated
+    // and will go through the list until it finds a hole that is big enough
+    // if it does not find a hole that is big enough then it will go back to the
+    // beginning of the list and go through the list until it finds a hole that is big enough
+    // if it does not find a hole that is big enough then it will return NULL
+    int i = 0;
+    for(i=lastUsed; i<MAX_LINKED_LIST_SIZE;i++)
+    {
+      if(LinkedList[i].type == H && LinkedList[i].in_use && size < LinkedList[i].size)
+      {
+        int leftover_size = LinkedList[i].size - size;
+        unsigned char * arena = (unsigned char *)LinkedList[i].arena + size;
+        // unsigned char * new_ptr = (unsigned char *)LinkedList[i].arena + (unsigned char *)size;
+        insertNode(leftover_size, arena);
+        LinkedList[i].type=P;
+        return LinkedList[i].arena;
+      }
+    }
   }
 
   return ptr;
@@ -309,18 +316,16 @@ void mavalloc_free( void * ptr )
   //check if adjacent nodes are free if they are combine them
   for(i=0; i<MAX_LINKED_LIST_SIZE-1;i++)
   {
-    if(LinkedList[i].type == H && LinkedList[i+1] == H)
+    if(LinkedList[i].type == H && LinkedList[i+1].type == H)
     {
       //combine the sizes into LinkedList[i]
-      LinkedList[i].size=LinkedList[i].size + LinkedList[i+1].size
+      LinkedList[i].size=LinkedList[i].size + LinkedList[i+1].size;
       //remove LinkedList[i+1]
     }
   }
 
   return;
 }
-
-
 
 int mavalloc_size( )
 {
