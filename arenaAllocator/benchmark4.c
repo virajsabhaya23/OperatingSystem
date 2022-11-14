@@ -1,8 +1,17 @@
+/*
+  Name: Viraj Sabhaya
+  ID: 1001828871
+  Name: Jose J Aguilar
+  ID: 1001128942
+*/
 #include "mavalloc.h"
 #include <stdlib.h>
+#include <time.h>
 
+clock_t start, end;
 int main( int argc, char * argv[] )
 {
+  start = clock();
   unsigned char * array [10000];
   mavalloc_init( 500000, WORST_FIT );
 
@@ -27,6 +36,9 @@ int main( int argc, char * argv[] )
 
   char * ptr4 = malloc(500);
   char * ptr5 = malloc(500);
+
+  end = clock();
+  printf("\n%f\n", (double)(end-start)/CLOCKS_PER_SEC);
 
   return 0;
 }

@@ -189,8 +189,8 @@ int test_case_5()
   TINYTEST_ASSERT( ptr3 ); 
 
   // If you failed here your Next Fit algorithm is not choosing
-  // the correct hole 
-  TINYTEST_EQUAL( ptr3, ptr4 ); 
+  // the correct hole
+  TINYTEST_EQUAL( ptr3, ptr4 );
   mavalloc_destroy( );
   return 1;
 }
@@ -571,7 +571,7 @@ int test_case_18()
   TINYTEST_ASSERT( ptr3 ); 
 
   // If you fail here then your first fit did not reuse the correct node 
-  TINYTEST_EQUAL( ptr2, ptr3 ); 
+  TINYTEST_EQUAL( ptr2, ptr3 );
 
   mavalloc_destroy( );
   return 1;
