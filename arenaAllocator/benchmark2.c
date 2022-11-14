@@ -1,9 +1,10 @@
 #include "mavalloc.h"
+#include <stdlib.h>
 
 int main( int argc, char * argv[] )
 {
   unsigned char * array [10000];
-  mavalloc_init( 1000000, NEXT_FIT );
+  mavalloc_init( 500000, NEXT_FIT );
 
   int i = 0;
   for(i=0;i<1000;i++)

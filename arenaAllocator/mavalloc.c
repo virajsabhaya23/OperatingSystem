@@ -42,7 +42,7 @@ int findFreeNodeInternal()
 	return -1;
 }
 
-int insertNodeInternal(int previous, int value)
+int insertNodeInternal(int previous, int value, unsigned char * new_arena)
 {
 	int i = 0;
 
@@ -67,6 +67,7 @@ int insertNodeInternal(int previous, int value)
 	{
 		LinkedList[i].size = value;
 		LinkedList[i].in_use = 1;
+    LinkedList[i].arena=new_arena;
 		lastUsed = i;
 	}
 	else
@@ -79,6 +80,7 @@ int insertNodeInternal(int previous, int value)
 
 		LinkedList[previous].in_use = 1;
 		LinkedList[previous].size = value;
+    LinkedList[previous].arena=new_arena;
 
 		lastUsed++;
 	}
@@ -142,7 +144,7 @@ int removeNode(int value)
 	return -1;
 }
 
-
+// 
 int insertNode(int value , unsigned char * new_arena)
 {
 	int previous = -1;
@@ -155,13 +157,14 @@ int insertNode(int value , unsigned char * new_arena)
 			(LinkedList[i].in_use == 0))
 		{
 			previous = i;
+      printf("This is the previous value: %d \n",previous);
 			break;
 		}
 	}
 
   if (previous >= -1)
 	{
-		ret = insertNodeInternal(previous, value);
+		ret = insertNodeInternal(previous, value, new_arena); //0,leftover_size, new_arena);
 	}
 	else if (previous >= MAX_LINKED_LIST_SIZE || previous < 0)
 	{
@@ -187,8 +190,6 @@ void printList()
 	}
 }
 
-
-
 int mavalloc_init( size_t size, enum ALGORITHM algorithm )
 {
   //Initialize our link List
@@ -201,12 +202,11 @@ int mavalloc_init( size_t size, enum ALGORITHM algorithm )
     LinkedList[i].type=H;
   }
   //Allocate the pool
-  printf("Hello \n");
+  // printf("Hello \n");
   gArena= malloc(ALIGN4(size));
   printf("%p\n", gArena );
-  printf("Bye \n");
+  // printf("Bye \n");
   //Save the algorithm type
-
   gAlgorithm=algorithm;
 
   // set the first entry to point to the arena
@@ -217,7 +217,6 @@ int mavalloc_init( size_t size, enum ALGORITHM algorithm )
 
   return 0;
 }
-
 
 
 void mavalloc_destroy()
@@ -239,7 +238,8 @@ void mavalloc_destroy()
 void * mavalloc_alloc( size_t size )
 {
   void * ptr=NULL;
-
+  int ret=0;
+  
   if(gAlgorithm == FIRST_FIT)
   {
     //start at the beginning of the List
@@ -248,12 +248,17 @@ void * mavalloc_alloc( size_t size )
 
     for(i=0; i<MAX_LINKED_LIST_SIZE;i++)
     {
-      if(LinkedList[i].type == H && LinkedList[i].in_use && size < LinkedList[i].size)
+      if(LinkedList[i].type == H && LinkedList[i].in_use && size <= LinkedList[i].size)
       {
         int leftover_size = LinkedList[i].size - size;
+        // calculate the arena
         unsigned char * arena = (unsigned char *)LinkedList[i].arena + size;
         // unsigned char * new_ptr = (unsigned char *)LinkedList[i].arena + (unsigned char *)size;
-        insertNode(leftover_size, arena);
+        ret=insertNode(leftover_size, arena);
+        if(ret==-1)
+        {
+          printf("There was an error with insert node");
+        }
         LinkedList[i].type=P;
         return LinkedList[i].arena;
       }
@@ -266,11 +271,62 @@ void * mavalloc_alloc( size_t size )
   }
   else if(gAlgorithm == BEST_FIT)
   {
-
+    int i = 0;
+    int previous_leftover_size=500000;
+    int current_leftover_size=0;
+    int temp;
+    unsigned char * arena;
+    for(i=0; i<MAX_LINKED_LIST_SIZE;i++)
+    {
+      if(LinkedList[0].size < size)
+      {
+        return NULL;
+      }
+      else if(LinkedList[i].type == H && LinkedList[i].in_use && size <= LinkedList[i].size)
+      {
+        current_leftover_size=LinkedList[i].size - size; //255-1000= -745
+        if(current_leftover_size<=previous_leftover_size)
+        {
+          previous_leftover_size=current_leftover_size; //4900
+          // printf("Best fit previous_leftover :%d\n",previous_leftover_size);
+          // arena = (unsigned char *)LinkedList[i].arena + size;
+          // printf("%p\n",arena);
+          // unsigned char * arena = (unsigned char *)LinkedList[i].arena + size;
+        }
+        // LinkedList[i].type=P;
+      }
+      //int ret=insertNode(previous_leftover_size, arena);
+      LinkedList[i].type=P;
+      return LinkedList[i].arena;
+    }
   }
   else if(gAlgorithm == WORST_FIT)
   {
-
+    // worst fit is the same as first fit except you start at the end of the list
+    // and work your way backwards
+    int i = 0;
+    int previous_leftover_size=0;
+    int current_leftover_size=0;
+    for(i=0; i<MAX_LINKED_LIST_SIZE;i++)
+    {
+      if(LinkedList[0].size < size)
+      {
+        return NULL;
+      }
+      else if(LinkedList[i].type == H && LinkedList[i].in_use && size <= LinkedList[i].size)
+      {
+        current_leftover_size=LinkedList[i].size - size; //5000-100=4900
+        if(current_leftover_size>previous_leftover_size)
+        {
+          previous_leftover_size=current_leftover_size; //4900
+          // LinkedList[i].type=P;
+        }
+        // insertNode(previous_leftover_size, arena);
+        // LinkedList[i].type=P;
+      }
+      LinkedList[i].type=P;
+      return LinkedList[i].arena;
+    }
   }
   else if(gAlgorithm == NEXT_FIT)
   {
@@ -279,25 +335,37 @@ void * mavalloc_alloc( size_t size )
     // if it does not find a hole that is big enough then it will go back to the
     // beginning of the list and go through the list until it finds a hole that is big enough
     // if it does not find a hole that is big enough then it will return NULL
-    int i = 0;
-    for(i=lastUsed; i<MAX_LINKED_LIST_SIZE;i++)
+    int i;
+    int index;
+    if(LinkedList[0].type == H && LinkedList[0].in_use && size <= LinkedList[0].size)
     {
-      if(LinkedList[i].type == H && LinkedList[i].in_use && size < LinkedList[i].size)
+        index=0;
+        LinkedList[0].type=P;
+        LinkedList[0].size=size;
+        LinkedList[0].in_use=1;
+        return LinkedList[0].arena;
+    }
+    else
+    {
+      for(i=index; i<MAX_LINKED_LIST_SIZE; i++)
       {
-        int leftover_size = LinkedList[i].size - size;
-        unsigned char * arena = (unsigned char *)LinkedList[i].arena + size;
-        // unsigned char * new_ptr = (unsigned char *)LinkedList[i].arena + (unsigned char *)size;
-        insertNode(leftover_size, arena);
-        LinkedList[i].type=P;
-        return LinkedList[i].arena;
+        if(LinkedList[i].type == H && LinkedList[i].in_use && size <= LinkedList[i].size)
+        {
+          LinkedList[i].type=P;
+          LinkedList[i].size=size;
+          LinkedList[i].in_use=1;
+          index=i;
+          break;
+          // calculate the arena
+          // unsigned char * new_ptr = (unsigned char *)LinkedList[i].arena + (unsigned char *)size;
+          // insertNode(leftover_size, arena);
+        }
       }
+      return LinkedList[i].arena;
     }
   }
-
   return ptr;
 }
-
-
 
 void mavalloc_free( void * ptr )
 {
