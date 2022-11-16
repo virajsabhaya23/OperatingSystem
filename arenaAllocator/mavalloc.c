@@ -49,7 +49,7 @@ int findFreeNodeInternal()
   return -1;
 }
 
-int insertNodeInternal(int previous, int value, unsigned char *new_arena)
+int insertNodeInternal(int var, int value, unsigned char *new_arena)
 {
   int i = 0;
 
@@ -147,26 +147,26 @@ int removeNode(int value)
 }
 
 // int insertNode(int value, unsigned char *new_arena)
-int insertNode(int value, unsigned char *new_arena)
+int insertNode(int var, int value, unsigned char *new_arena)
 {
   int previous = -1;
   int i;
   int ret = -1;
   // int index = ROOTNODE;
 
-  for (i = ROOTNODE; i < MAX_LINKED_LIST_SIZE; i++)
-  {
-    if ((LinkedList[i].in_use && LinkedList[i].size > value) ||
-        (LinkedList[i].in_use == 0))
-    {
-      previous = i;
-      break;
-    }
-  }
+  // for (i = ROOTNODE; i < MAX_LINKED_LIST_SIZE; i++)
+  // {
+  //   if ((LinkedList[i].in_use && LinkedList[i].size > value) ||
+  //       (LinkedList[i].in_use == 0))
+  //   {
+  // previous = i;
+  //     break;
+  //   }
+  // }
 
   if (previous >= -1)
   {
-    ret = insertNodeInternal(previous, value, new_arena); // 0,leftover_size, new_arena;
+    ret = insertNodeInternal(var, value, new_arena); // 0,leftover_size, new_arena;
   }
   else if (previous >= MAX_LINKED_LIST_SIZE || previous < 0)
   {
@@ -248,8 +248,9 @@ void *mavalloc_alloc(size_t size)
         int leftover_size = LinkedList[i].size - size;
         // calculate the arena
         unsigned char *arena = (unsigned char *)LinkedList[i].arena + size;
+        int var =i+1;
         // unsigned char * new_ptr = (unsigned char *)LinkedList[i].arena + (unsigned char *)size;
-        ret = insertNode(leftover_size, arena);
+        ret = insertNode(var,leftover_size, arena);
         if (ret == -1)
         {
           printf("There was an error with insert node");
@@ -307,7 +308,8 @@ void *mavalloc_alloc(size_t size)
           previous_leftover_size = current_leftover_size; // 4900
         }
         unsigned char *arena = (unsigned char *)LinkedList[i].arena + size;
-        ret = insertNode(previous_leftover_size, arena);
+        int var =i+1;
+        ret = insertNode(var,previous_leftover_size, arena);
         if (ret == -1)
         {
           printf("There was an error with insert node");
@@ -329,7 +331,8 @@ void *mavalloc_alloc(size_t size)
         int leftover_size = LinkedList[previous].size - size;
         // int leftover_size = LinkedList[i].size - size;
         unsigned char *arena = (unsigned char *)LinkedList[i].arena + size;
-        ret = insertNode(leftover_size, arena);
+        int var =i+1;
+        ret = insertNode(var,leftover_size, arena);
         if (ret == -1)
         {
           printf("There was an error with insert node");
