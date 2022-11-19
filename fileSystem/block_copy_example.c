@@ -21,7 +21,7 @@
 // THE SOFTWARE.
 
 // Purpose:  This program demonstrates some of the system calls you can use
-//           to copy data in block sized chunks from a file, store it in "blocks" 
+//           to copy data in block sized chunks from a file, store it in "blocks"
 //           and copy the data back in block size chunks into a new file.
 //           You are free to use this code in assignment 4 if you wish.
 

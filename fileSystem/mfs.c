@@ -1,3 +1,9 @@
+/*
+  Name: Viraj Sabhaya
+  ID: 1001828871
+  Name: Jose J Aguilar
+  ID: 1001128942
+*/
 // The MIT License (MIT)
 // 
 // Copyright (c) 2016, 2017 Trevor Bakker 
@@ -39,10 +45,16 @@
 
 #define MAX_NUM_ARGUMENTS 5     // Mav shell only supports five arguments
 
+//define file system size
+#define FILE_NAME_SIZE 32
+
 int main()
 {
 
   char * cmd_str = (char*) malloc( MAX_COMMAND_SIZE );
+
+  FILE *fileNameOne, *fileNameTwo;
+  char tmep;
 
   while( 1 )
   {
@@ -88,9 +100,85 @@ int main()
     // \TODO Remove this code and replace with your shell functionality
 
     int token_index  = 0;
-    for( token_index = 0; token_index < token_count; token_index ++ ) 
+    for( token_index = 0; token_index < token_count; token_index ++ )
     {
-      printf("token[%d] = %s\n", token_index, token[token_index] );  
+      printf("token[%d] = %s\n", token_index, token[token_index] );
+    }
+
+    if (token[0] != NULL)
+    {
+      //quits the file system application if the user inputs quit
+      if (strcmp(token[0], "quit") == 0)
+      {
+        exit(0);
+      }
+      // compares if the user inputs to close the file system
+      if (strcmp(token[0], "open") == 0)
+      {
+        if(token[1] != NULL)
+        {
+          //opens the file system
+          fileNameOne = fopen(token[1], "r+");
+          // fileNameTwo = fopen(token[2], "w+");
+          {
+            printf("Opening file system : %s\n", token[1]);
+          }
+
+          do
+          {
+              /* Read single character from file */
+              tmep = fgetc(fileNameOne);
+
+              /* Print character read on console */
+              putchar(tmep);
+
+          } while(tmep != EOF);
+          // tmep = fgetc(fileNameOne);
+          // while(tmep != EOF)
+          // {
+          //   fputs(tmep, fileNameTwo);
+          //   tmep = fgetc(fileNameOne);
+          // }
+        }
+        else if(token[2] != NULL)
+        {
+          printf("too many arguments/ more than 1 filename provided.\n");
+        }
+    else if(token[0]=="del")
+    {
+      int var=remove(token[1]);
+      if(var==0)
+      {
+        printf("File deleted\n");
+      }
+      else
+      {
+        printf("error: File not found\n");
+      }
+    }
+        else
+        {
+          printf("No file name provided.\n");
+        }
+      }
+      else
+      {
+        pid_t pid = fork();
+
+        if (pid == 0)
+        {
+          if (execvp(token[0], token) == -1)
+          {
+            printf("%s: Command not found.\n", token[0]);
+            exit(0);
+          }
+        }
+        else
+        {
+          int status;
+          waitpid(pid, &status, 0);
+        }
+      }
     }
 
     free( working_root );
