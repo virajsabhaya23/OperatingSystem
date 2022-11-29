@@ -123,13 +123,14 @@ int findFreeBlock()
     return retval;
   }
 }
-//QUESTION: 
+
+//QUESTION:
 int findFreeInodeBlockEntry(int inode_index)
 {
   int i;
   int retval =-1;
 
-  for(i=0; i<32; i++)
+  for(i=0; i<MAX_BLOCKS_PER_FILE; i++)
   {
     if(inode_array_ptr[inode_index]->blocks[i]==-1)
     {
@@ -151,7 +152,7 @@ int df()
   {
     if(used_blocks[i]==0)
     {
-       count++; 
+       count++;
     }
   }
   return count * BLOCK_SIZE;
