@@ -51,7 +51,7 @@
 #define BLOCK_SIZE 8192          // file system block size
 #define MAX_NUM_OF_FILES 125     // max number of files in file system
 #define MAX_FILE_SIZE 10240000   // max file size per file in file system
-#define MAX_FILE_NAME_SIZE 200   // define file name size
+#define MAX_FILE_NAME_SIZE 32    // define file name size
 #define MAX_BLOCKS_PER_FILE 1250 // MAX_FILE_SIZE divided by BLOCK_SIZE gives us the MAX_BLOCKS_PER_FILE
 
 // inodes maintain a list of which blocks make up a file
@@ -60,26 +60,16 @@
 /// blocks make up a file
 
 // Directory maps from the filename to an inode number that holds file info
-
 unsigned char data_blocks[NUMBER_OF_BLOCKS][BLOCK_SIZE]; // 34,619,392
 int used_blocks[NUMBER_OF_BLOCKS];                       // 4226
-FILE *fp =NULL;
 
-/*
-  This directory structure will contain values that specify 
-  the name of a file, if that directory index is in use (0 or 1) 
-  and the inode index which maps in to an inode or the inode structure
-  */
 struct directory_entry
 {
   char *name;
   int in_use;
   int inodeIndex;
 };
-/*
-  Initializing a pointer to a struct called directory_ptr. 
-  This element will hold the  for our data 
-*/
+
 struct directory_entry *directory_ptr;
 
 struct inode
@@ -92,9 +82,6 @@ struct inode
 
 struct inode *inode_array_ptr[MAX_NUM_OF_FILES];
 
-/* Init function
-This function r
-*/
 void init()
 {
   int i;
@@ -109,7 +96,7 @@ void init()
   int inode_idx = 0;
   for (i = 0; i < 125; i++)
   {
-    inode_array_ptr[i] = (struct inode *)&data_blocks[i + 5];
+    inode_array_ptr[i] = (struct inode *)&data_blocks[i+5];
     inode_array_ptr[i]->in_use = 0;
     for (j = 0; j < 32; j++)
     {
@@ -123,49 +110,12 @@ void init()
 // correct
 int findFreeBlock()
 {
-
   int retval = -1;
   int i = 0;
 
   for (i = 130; i < 4226; i++)
   {
     if (used_blocks[i] == 0)
-    {
-      retval = i;
-      break;
-    }
-  }
-  return retval;
-}
-
-// correct
-int findFreeDirectoryEntry()
-{
-  int i;
-  int retval = -1;
-
-  for (i = 0; i < MAX_NUM_OF_FILES; i++)
-  {
-    if (directory_ptr[i].in_use == 0) // can be directory_ptr[i].in_use
-    {
-      retval = i;
-      break;
-    }
-  }
-  return retval;
-}
-
-// correct
-int findFreeInode()
-{
-  int i;
-  int retval = -1;
-  // initialized an inode array of size 125
-  // search the inode_array_ptr for a free inode
-  // return the index ov the free inode
-  for (i = 0; i < MAX_NUM_OF_FILES; i++)
-  {
-    if (inode_array_ptr[i]->in_use == 0)
     {
       retval = i;
       break;
@@ -195,7 +145,6 @@ int findFreeInodeBlockEntry(int inode_index)
 }
 
 // returns how much space we have
-// correct
 int df()
 {
   int count = 0;
@@ -210,9 +159,43 @@ int df()
   return count * BLOCK_SIZE;
 }
 
+// directory = block
+int findFreeDirectoryEntry()
+{
+  int i;
+  int retval = -1;
+
+  for (i = 0; i < MAX_NUM_OF_FILES; i++) // MAX_NUM_OF_FILES
+  {
+    if (directory_ptr[i].in_use == 0) // can be directory_ptr[i].in_use
+    {
+      retval = i;
+      break;
+    }
+  }
+  return retval;
+}
+
+int findFreeInode()
+{
+  int i;
+  int retval = -1;
+  // initialized an inode array of size 125
+  // search the inode_array_ptr for a free inode
+  // return the index ov the free inode
+  for (i = 0; i < MAX_NUM_OF_FILES; i++)
+  {
+    if (inode_array_ptr[i]->in_use == 0)
+    {
+      retval = i;
+      break;
+    }
+  }
+  return retval;
+}
+
 void put(char *token[])
 {
-  printf("%s\n", token[1]);
   struct stat buf;
   int status = stat(token[1], &buf);
   // if the file does not exist stat returns a -1
@@ -245,8 +228,7 @@ void put(char *token[])
   directory_ptr[dir_index].in_use = 1;
   // Now we have to copy the filename into the directory entry
   // We allocate memory for the name
-  directory_ptr[dir_index].name = (char *)malloc(32);
-  memset(directory_ptr[dir_index].name, 0, 32);
+  directory_ptr[dir_index].name = (char *)malloc(strlen(token[1]));
   // We string copy into directory_ptr[dir_index].name
   strncpy(directory_ptr[dir_index].name, token[1], strlen(token[1]));
 
@@ -326,7 +308,9 @@ void put(char *token[])
     }
 
     clearerr(ifp);
+
     copy_size -= BLOCK_SIZE;
+
     offset += BLOCK_SIZE;
   }
 
@@ -363,180 +347,73 @@ void put(char *token[])
   return;
 }
 
-void get(char *token[])
+/*
+void get(char * token [])
 {
-  int i;
-  int block_index;
-  int copy_size;
-  int offset;
+    struct stat buf;
+    int status= stat(token[2],&buf);
 
-  FILE *ofp;
-  ofp = fopen(token[2], "w");
+    FILE *ofp;
+    ofp = fopen(token[2], "w");
 
-  if (ofp == NULL)
-  {
-    printf("Could not open output file: %s\n", token[2]);
-    perror("Opening output file returned");
-    return;
-  }
-
-  for (i = 0; i < MAX_NUM_OF_FILES; i++)
-  {
-    if (strcmp(directory_ptr[i].name, token[1]) == 0)
+    if(ofp == NULL)
     {
-      int in_idx = directory_ptr[i].inodeIndex;
-      // printf("in_idx: %d\n", in_idx);
-      copy_size = inode_array_ptr[in_idx]->size;
-      // printf("copy_size: %d\n", copy_size);
-      block_index = inode_array_ptr[in_idx]->blocks[0];
-      // printf("block_index: %d\n", block_index);
-      offset = 0;
-      // printf("Writing %d bytes to %s\n", copy_size, token[2]);
-      while (copy_size > 0)
+      printf("Could not open output file: %s\n", token[2] );
+      perror("Opening output file returned");
+      return -1;
+    }
+
+    block_index = 0;
+    copy_size = buf.st_size;
+    offset= 0;
+
+    printf("Writing %d bytes to %s\n", (int)buf.st_size, token[2]);
+
+
+    while( copy_size > 0 )
+    {
+
+      int num_bytes;
+
+      if( copy_size < BLOCK_SIZE )
       {
-        int num_bytes;
-        if (copy_size < BLOCK_SIZE)
-        {
-          num_bytes = copy_size;
-        }
-        else
-        {
-          num_bytes = BLOCK_SIZE;
-        }
-        fwrite(data_blocks[block_index], num_bytes, 1, ofp);
-        copy_size -= BLOCK_SIZE;
-        offset += BLOCK_SIZE;
-        block_index++;
-        fseek(ofp, offset, SEEK_SET);
+        num_bytes = copy_size;
       }
-      break;
-    }
-  }
-  fclose(ofp);
-}
-
-/*
-  listFiles function will list all the files in the files system images.
-  It will print out the name of the file and the size of the file,
-  along with the date and time.
-*/
-void listFiles()
-{
-  int i;
-  char *date_string;
-  int lenght;
-
-  for (i = 0; i < MAX_NUM_OF_FILES; i++)
-  {
-    if (directory_ptr[i].in_use == 1 && inode_array_ptr[i]->in_use == 1)
-    {
-      lenght = strlen(ctime(&inode_array_ptr[i]->date)) - 1;
-      strncpy(date_string, ctime(&inode_array_ptr[i]->date), lenght);
-      // printf("%d %s %s\n", inode_array_ptr[i]->size, date_string, directory_ptr[i].name);
-    }
-  }
-}
-
-/*
-  deleteFile function deletes a file from the file system,
-  if the file exsists in the list.
-*/
-void deleteFile(char *token[])
-{
-  int i;
-  int in_idx;
-  int bl_index;
-  int j;
-  for (i = 0; i < MAX_NUM_OF_FILES; i++)
-  {
-    if (strcmp(directory_ptr[i].name, token[1]) == 0)
-    {
-      in_idx = directory_ptr[i].inodeIndex;
-      for (j = 0; j < 32; j++)
+      else
       {
-        bl_index = inode_array_ptr[in_idx]->blocks[j];
-        used_blocks[bl_index] = 0;
+        num_bytes = BLOCK_SIZE;
       }
-      inode_array_ptr[in_idx]->in_use = 0;
-      directory_ptr[i].in_use = 0;
-      return;
-    }
-  }
-  printf("Error: File not found\n");
-}
 
-/*
-  createfs fucntion creates a file system with the given size
-  and the given name in local direcotry and stores it in the data blocks
-  upto 34 M.
+      fwrite( data_blocks[block_index], num_bytes, 1, ofp );
+
+
+      copy_size -= BLOCK_SIZE;
+      offset += BLOCK_SIZE;
+      block_index ++;
+
+      fseek( ofp, offset, SEEK_SET );
+    }
+
+    fclose( ofp );
+}
 */
-void createfs(char *token[])
+void listFiles(char *token[])
 {
-  int block_index;
-  int copy_size;
-  int offset, i;
-  //unsigned char fileDataBlocks[4226][8192];
-  fp = fopen(token[1], "w");
-  // memset(data_blocks, 0, sizeof(data_blocks));
-  for (i = 0; i < MAX_NUM_OF_FILES; i++)
-  {
-    if (strcmp(directory_ptr[i].name, token[1]) == 0)
-    {
-      int in_idx = directory_ptr[i].inodeIndex;
-      copy_size = inode_array_ptr[in_idx]->size;
-      block_index = inode_array_ptr[in_idx]->blocks[0];
-      offset = 0;
 
-      while (copy_size > 0)
-      {
-        int num_bytes;
-
-        if (copy_size < BLOCK_SIZE)
-        {
-          num_bytes = copy_size;
-        }
-        else
-        {
-          num_bytes = BLOCK_SIZE;
-        }
-
-        fwrite(data_blocks[block_index], num_bytes, 1, fp);
-
-        copy_size -= BLOCK_SIZE;
-        offset += BLOCK_SIZE;
-        block_index++;
-
-        fseek(fp, offset, SEEK_SET);
-      }
-      break;
-    }
-  }
-  fclose(fp);
+  return;
 }
 
-/*
-  fileSystemCommands function takes the user input and
-  calls the relevant function.
-*/
 void filesystemCommands(char *token[])
 {
-  FILE *fileImg;
-  char fileImgName;
+  FILE *fileImg ;
 
   if (strcmp(token[0], "put") == 0)
   {
-    if (token[1] == NULL)
-    {
-      printf("Error: Filename required\n");
-    }
-    else
-    {
-      put(token);
-    }
+    put(token);
   }
   else if (strcmp(token[0], "get") == 0)
   {
-    get(token);
+    // get(token);
     return;
   }
   else if (strcmp(token[0], "quit") == 0)
@@ -552,50 +429,55 @@ void filesystemCommands(char *token[])
   {
     // if condition to check if any file exists
     // return;
-    if (token[1] == NULL)
+    if(token[1] == NULL)
     {
       printf("Error: No such file exists. \n");
       return;
     }
-    else if (token[1] != NULL)
+    else if(token[1] != NULL)
     {
-      fileImg = fopen(token[1], "r");
+      fileImg = fopen(token[1],"w");
     }
   }
-  else if (strcmp(token[0], "close") == 0)
+  else if(strcmp(token[0], "close") == 0)
   {
-    if (fileImg == NULL)
+    if(token[1] == NULL)
     {
-      printf("Error: No file is opened. \n");
+      printf("Error: No such file exists. \n");
       return;
     }
-    else
+    else if(token[1] != NULL)
     {
       fclose(fileImg);
     }
   }
   else if (strcmp(token[0], "createfs") == 0)
   {
-    // create a 34M file in the local directory
-    // write data_blocks to that file
-    // close the file
-    if (token[1] == NULL)
+    if(token[1] == NULL)
     {
       printf("Error: No such file exists. \n");
       return;
     }
-    else if (token[1] != NULL)
+    else if(token[1] != NULL)
     {
-      createfs(token);
+      // createfs(token[1]);
     }
   }
-  else if (strcmp(token[0], "list") == 0)
+  else if (strcmp(token[0], "list") == 0 && strcmp(token[1], "[-h]") == 0)
   {
-    listFiles();
+    listFiles(token);
   }
   else if (strcmp(token[0], "del") == 0)
   {
-    deleteFile(token);
+    int var = remove(token[1]);
+    if (var == 0)
+    {
+      printf("File deleted\n");
+    }
+    else
+    {
+      printf("error: File not found\n");
+    }
   }
   else if (strcmp(token[0], "cd") == 0)
   {

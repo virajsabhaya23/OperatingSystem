@@ -1,6 +1,6 @@
 # File System
 
-### A simple way to test it:
+###A simple way to test it:
  - Start your program
  - createfs fs.image
  - open fs.image
