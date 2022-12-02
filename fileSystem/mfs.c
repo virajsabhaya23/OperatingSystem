@@ -63,7 +63,7 @@
 
 unsigned char data_blocks[NUMBER_OF_BLOCKS][BLOCK_SIZE]; // 34,619,392
 int used_blocks[NUMBER_OF_BLOCKS];                       // 4226
-FILE *fp =NULL;
+FILE *fp = NULL;
 
 /*
   This directory structure will contain values that specify 
@@ -78,10 +78,17 @@ struct directory_entry
 };
 /*
   Initializing a pointer to a struct called directory_ptr. 
-  This element will hold the  for our data 
+  This element's indexes will map to other structures
+  that will hold our data. 
 */
 struct directory_entry *directory_ptr;
 
+/*
+  The inode structure contains values such as if its in_use. We can 
+  skip the inode if its in use. The size of the file. The date the 
+  file was created. Lastly, a blocks array that will map to our
+  data_blocks array. This is the way were going to map our data.
+*/
 struct inode
 {
   time_t date;
@@ -89,11 +96,23 @@ struct inode
   int size;
   int blocks[32];
 };
-
+/*
+  Initializing a array of pointers to a struct with a size of 125.
+  This element will hold our inode indexes. Each file will belong to
+  one file.
+*/
 struct inode *inode_array_ptr[MAX_NUM_OF_FILES];
 
 /* Init function
-This function r
+  This function initializes and assigns a value to each index of that
+certain structure/element. The directory_ptr is pointing to the first
+block in data_blocks. This way we now that our directory exists in the 
+first block of data_blocks. We initially set our directory indexes to not
+in use or 0. This is used because once we use that directory index we'll 
+set it to 1 or in use. For the inode pointer we do the same thing 
+We just run a second for loop and access the blocks array and set it to -1. 
+This will notify us that the block is not in use.
+
 */
 void init()
 {
@@ -119,8 +138,12 @@ void init()
   }
 }
 
-// find free block to store our file data
-// correct
+/*
+  This function is findFreeBlock(), this function will
+  iterate throught the used_blocks array from 130-4226 
+  and attempt to find a free space. If it does it returns 
+  the index of the free block.
+*/
 int findFreeBlock()
 {
 
@@ -138,7 +161,12 @@ int findFreeBlock()
   return retval;
 }
 
-// correct
+/*
+  This function findFreeDirectoryEntry() will find the index
+  of a free directory by interating thru directory_ptr. If its
+  not in use it will equal 0 so we can return that index and say
+  we found a free directory to use. If not it returns a -1.
+*/
 int findFreeDirectoryEntry()
 {
   int i;
@@ -155,7 +183,13 @@ int findFreeDirectoryEntry()
   return retval;
 }
 
-// correct
+/*
+  This function findFreeInode() searches inode_array_ptr
+  for an index not in use. Since its one inode per file
+  we need to search for an inode thats not in use or equal 0.
+  If we do we can return the index if not we return -1 or we 
+  didnt find an inode available.
+*/
 int findFreeInode()
 {
   int i;
@@ -174,10 +208,13 @@ int findFreeInode()
   return retval;
 }
 
-// in our init function we have to set all
-// inode_array_ptr[inode_index]->blocks[i]==-1
-// to specify that they are not used
-// correct
+/*
+  This function findFreeInodeBlockEntry() searches the block element
+  in inode_array_ptr that has a certian inode index and looks for a free block 
+  to index to a used_block index. Each block has a size 8192 so if its in use 
+  that means that 8192 bytes have been used. The function the returns that index of 
+  blocks. 
+*/
 int findFreeInodeBlockEntry(int inode_index)
 {
   int i;
@@ -194,8 +231,10 @@ int findFreeInodeBlockEntry(int inode_index)
   return retval;
 }
 
-// returns how much space we have
-// correct
+/*
+  The df functionreturns how much space we have left in the filesystem Image,
+  uses the count variable to keep track of how many blocks are in use
+*/
 int df()
 {
   int count = 0;
@@ -210,6 +249,10 @@ int df()
   return count * BLOCK_SIZE;
 }
 
+/*
+  put function will take a file name and will write the file to the
+  filesystem image.
+*/
 void put(char *token[])
 {
   printf("%s\n", token[1]);
@@ -363,6 +406,11 @@ void put(char *token[])
   return;
 }
 
+/*
+  get <filename> - copies the file to the local directory.
+  get <filename1> <filename2> - copies file1 to file2.
+  it opens the file and writes to it and then closes it.
+*/
 void get(char *token[])
 {
   int i;
@@ -432,14 +480,15 @@ void listFiles()
     {
       lenght = strlen(ctime(&inode_array_ptr[i]->date)) - 1;
       strncpy(date_string, ctime(&inode_array_ptr[i]->date), lenght);
-      // printf("%d %s %s\n", inode_array_ptr[i]->size, date_string, directory_ptr[i].name);
+      printf("%d %s %s\n", inode_array_ptr[i]->size, date_string, directory_ptr[i].name);
     }
   }
 }
 
 /*
   deleteFile function deletes a file from the file system,
-  if the file exsists in the list.
+  if the file exsists in the list, by using the inuse variable form the
+  directory ptr Struct or else prompts an error if file ont found.
 */
 void deleteFile(char *token[])
 {
@@ -472,56 +521,18 @@ void deleteFile(char *token[])
 */
 void createfs(char *token[])
 {
-  int block_index;
-  int copy_size;
-  int offset, i;
-  //unsigned char fileDataBlocks[4226][8192];
   fp = fopen(token[1], "w");
-  // memset(data_blocks, 0, sizeof(data_blocks));
-  for (i = 0; i < MAX_NUM_OF_FILES; i++)
-  {
-    if (strcmp(directory_ptr[i].name, token[1]) == 0)
-    {
-      int in_idx = directory_ptr[i].inodeIndex;
-      copy_size = inode_array_ptr[in_idx]->size;
-      block_index = inode_array_ptr[in_idx]->blocks[0];
-      offset = 0;
-
-      while (copy_size > 0)
-      {
-        int num_bytes;
-
-        if (copy_size < BLOCK_SIZE)
-        {
-          num_bytes = copy_size;
-        }
-        else
-        {
-          num_bytes = BLOCK_SIZE;
-        }
-
-        fwrite(data_blocks[block_index], num_bytes, 1, fp);
-
-        copy_size -= BLOCK_SIZE;
-        offset += BLOCK_SIZE;
-        block_index++;
-
-        fseek(fp, offset, SEEK_SET);
-      }
-      break;
-    }
-  }
-  fclose(fp);
+  
 }
 
 /*
-  fileSystemCommands function takes the user input and
-  calls the relevant function.
+  fileSystemCommands function takes the user input in form of
+  of tokens, and calls the relevant function that matches the
+  if conidtion and further perform action for that token.
 */
 void filesystemCommands(char *token[])
 {
   FILE *fileImg;
-  char fileImgName;
 
   if (strcmp(token[0], "put") == 0)
   {
@@ -546,12 +557,10 @@ void filesystemCommands(char *token[])
   else if (strcmp(token[0], "df") == 0)
   {
     int leftover_disk_space = df();
-    printf("Disk Space left in the filesystem : %d\n", leftover_disk_space);
+    printf(" %d bytes free \n", leftover_disk_space);
   }
   else if (strcmp(token[0], "open") == 0)
   {
-    // if condition to check if any file exists
-    // return;
     if (token[1] == NULL)
     {
       printf("Error: No such file exists. \n");
@@ -559,6 +568,7 @@ void filesystemCommands(char *token[])
     }
     else if (token[1] != NULL)
     {
+      //write the open file name to the variable fileImg
       fileImg = fopen(token[1], "r");
     }
   }
@@ -568,10 +578,6 @@ void filesystemCommands(char *token[])
     {
       printf("Error: No file is opened. \n");
       return;
-    }
-    else
-    {
-      fclose(fileImg);
     }
   }
   else if (strcmp(token[0], "createfs") == 0)
@@ -666,6 +672,7 @@ int main()
       token_count++;
     }
 
+    // it will only look for the commands if the arg[0] is not null
     if (token[0] != NULL)
     {
       filesystemCommands(token);
